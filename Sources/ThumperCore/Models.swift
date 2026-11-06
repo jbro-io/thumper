@@ -75,6 +75,33 @@ public struct CounterSample: Sendable {
     }
 }
 
+public struct OverlayPlacement: Codable, Equatable {
+    public private(set) var frame: CGRect
+    private let anchor: CGPoint
+    private let right: Bool
+    private let top: Bool
+
+    public init(frame: CGRect, on visible: CGRect) {
+        let frame = OverlayGeometry.clamped(frame, to: visible)
+        self.frame = frame
+        right = visible.maxX - frame.maxX < frame.minX - visible.minX
+        top = visible.maxY - frame.maxY <= frame.minY - visible.minY
+        anchor = CGPoint(x: right ? frame.maxX : frame.minX, y: top ? frame.maxY : frame.minY)
+    }
+
+    public mutating func resize(to size: CGSize, on visible: CGRect) {
+        let fitted = OverlayGeometry.clamped(CGRect(origin: frame.origin, size: size), to: visible).size
+        let origin = CGPoint(x: right ? anchor.x - fitted.width : anchor.x,
+                             y: top ? anchor.y - fitted.height : anchor.y)
+        frame = OverlayGeometry.clamped(CGRect(origin: origin, size: fitted), to: visible)
+    }
+
+    public var isValid: Bool {
+        [frame.minX, frame.minY, frame.width, frame.height, anchor.x, anchor.y].allSatisfy(\.isFinite)
+            && frame.width > 0 && frame.height > 0
+    }
+}
+
 public enum OverlayGeometry {
     public static func pickerFrame(size: CGSize, near overlay: CGRect?, on visible: CGRect) -> CGRect {
         guard let overlay else {

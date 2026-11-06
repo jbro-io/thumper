@@ -4,6 +4,56 @@ import XCTest
 @testable import ThumperCore
 
 final class MetricsTests: XCTestCase {
+    func testOverlayResizesAwayFromNearestEdgesInEveryCorner() {
+        let screen = CGRect(x: 0, y: 0, width: 1200, height: 800)
+        for x: CGFloat in [100, 800] {
+            for y: CGFloat in [50, 650] {
+                let original = CGRect(x: x, y: y, width: 300, height: 100)
+                var placement = OverlayPlacement(frame: original, on: screen)
+                placement.resize(to: CGSize(width: 500, height: 250), on: screen)
+                if x == 100 { XCTAssertEqual(placement.frame.minX, original.minX) }
+                else { XCTAssertEqual(placement.frame.maxX, original.maxX) }
+                if y == 50 { XCTAssertEqual(placement.frame.minY, original.minY) }
+                else { XCTAssertEqual(placement.frame.maxY, original.maxY) }
+                XCTAssertTrue(screen.contains(placement.frame))
+                placement.resize(to: original.size, on: screen)
+                XCTAssertEqual(placement.frame, original)
+            }
+        }
+    }
+
+    func testOverlayKeepsItsAnchorWhenGrowthCrossesTheScreenMidpoint() {
+        let screen = CGRect(x: 0, y: 0, width: 1000, height: 800)
+        let original = CGRect(x: 500, y: 500, width: 300, height: 100)
+        var placement = OverlayPlacement(frame: original, on: screen)
+        placement.resize(to: CGSize(width: 650, height: 500), on: screen)
+        placement.resize(to: CGSize(width: 200, height: 80), on: screen)
+        XCTAssertEqual(placement.frame.maxX, original.maxX)
+        XCTAssertEqual(placement.frame.maxY, original.maxY)
+    }
+
+    func testOverlayRestoresItsAnchorAfterClampingAndRelaunch() throws {
+        let screen = CGRect(x: 0, y: 0, width: 1000, height: 800)
+        let original = CGRect(x: 500, y: 500, width: 300, height: 100)
+        var placement = OverlayPlacement(frame: original, on: screen)
+        placement.resize(to: CGSize(width: 5000, height: 5000), on: screen)
+        XCTAssertTrue(screen.contains(placement.frame))
+        var restored = try JSONDecoder().decode(OverlayPlacement.self, from: JSONEncoder().encode(placement))
+        XCTAssertTrue(restored.isValid)
+        restored.resize(to: original.size, on: screen)
+        XCTAssertEqual(restored.frame, original)
+    }
+
+    func testOverlayAnchorsUseTheSelectedMonitorWithNegativeCoordinates() {
+        let screen = CGRect(x: -1920, y: -1080, width: 1920, height: 1080)
+        let original = CGRect(x: -500, y: -100, width: 300, height: 60)
+        var placement = OverlayPlacement(frame: original, on: screen)
+        placement.resize(to: CGSize(width: 800, height: 300), on: screen)
+        XCTAssertEqual(placement.frame.maxX, original.maxX)
+        XCTAssertEqual(placement.frame.maxY, original.maxY)
+        XCTAssertTrue(screen.contains(placement.frame))
+    }
+
     func testPickerOpensBesideOverlayAndStaysOnItsMonitor() {
         let screen = CGRect(x: 2000, y: -500, width: 1920, height: 1080)
         let overlay = CGRect(x: 2100, y: 200, width: 548, height: 300)

@@ -18,6 +18,7 @@ struct OverlayPreferences: Codable, Equatable {
     var displayID: UInt32?
     var originX: Double?
     var originY: Double?
+    var placement: OverlayPlacement?
     var showHeaders = true
     var showGPU = true
     var showThreads = true
@@ -28,7 +29,7 @@ struct OverlayPreferences: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case visible, locked, alwaysInFront, glassBackground, fontSize, opacity, ink, interval
-        case displayID, originX, originY, showHeaders, showGPU, showThreads, showPorts, showPID
+        case displayID, originX, originY, placement, showHeaders, showGPU, showThreads, showPorts, showPID
         case backgroundStyle, backgroundOpacity, overlaySortField, overlaySortAscending
     }
 
@@ -49,6 +50,7 @@ struct OverlayPreferences: Codable, Equatable {
         displayID = try values.decodeIfPresent(UInt32.self, forKey: .displayID)
         originX = try values.decodeIfPresent(Double.self, forKey: .originX)
         originY = try values.decodeIfPresent(Double.self, forKey: .originY)
+        placement = try values.decodeIfPresent(OverlayPlacement.self, forKey: .placement)
         showHeaders = try values.decodeIfPresent(Bool.self, forKey: .showHeaders) ?? true
         showGPU = try values.decodeIfPresent(Bool.self, forKey: .showGPU) ?? true
         showThreads = try values.decodeIfPresent(Bool.self, forKey: .showThreads) ?? true
@@ -65,6 +67,7 @@ struct OverlayPreferences: Codable, Equatable {
         backgroundOpacity = backgroundOpacity.isFinite ? min(0.8, max(0, backgroundOpacity)) : 0.18
         if originX?.isFinite == false { originX = nil }
         if originY?.isFinite == false { originY = nil }
+        if placement?.isValid == false { placement = nil }
     }
 }
 
@@ -227,6 +230,7 @@ final class AppStore: ObservableObject {
             preferences.displayID = NSScreen.main?.displayID ?? displays.first?.id
             preferences.originX = nil
             preferences.originY = nil
+            preferences.placement = nil
         }
     }
 
@@ -235,6 +239,7 @@ final class AppStore: ObservableObject {
         next.displayID = id
         next.originX = nil
         next.originY = nil
+        next.placement = nil
         preferences = next
     }
 
@@ -242,15 +247,17 @@ final class AppStore: ObservableObject {
         var next = preferences
         next.originX = nil
         next.originY = nil
+        next.placement = nil
         preferences = next
     }
 
-    func rememberPosition(_ origin: CGPoint, displayID: UInt32?) {
+    func rememberPlacement(_ placement: OverlayPlacement, displayID: UInt32?) {
         var next = preferences
-        next.originX = origin.x
-        next.originY = origin.y
+        next.originX = placement.frame.minX
+        next.originY = placement.frame.minY
+        next.placement = placement
         next.displayID = displayID
-        preferences = next
+        if next != preferences { preferences = next }
     }
 
     private func save() {

@@ -15,7 +15,6 @@ final class OverlayController: NSObject, NSWindowDelegate {
     private let store: AppStore
     private var observations: Set<AnyCancellable> = []
     private var adjustingFrame = false
-    private var lastDisplayID: UInt32?
     private var hasGlass = false
     private var globalContextMonitor: Any?
     private var localContextMonitor: Any?
@@ -103,27 +102,24 @@ final class OverlayController: NSObject, NSWindowDelegate {
             hasGlass = wantsGlass
             panel.hasShadow = hasGlass
         }
-        let size = content.desiredSize
-        let savedX = store.preferences.originX
-        let savedY = store.preferences.originY
-        let movedToDisplay = lastDisplayID != screen.displayID
-        let origin: CGPoint
-        if let savedX, let savedY {
-            origin = CGPoint(x: savedX, y: savedY)
-        } else {
-            origin = CGPoint(x: screen.visibleFrame.maxX - size.width - 32, y: screen.visibleFrame.maxY - size.height - 40)
-        }
-        var frame = CGRect(origin: origin, size: size)
-        // Keep the top edge still when the user adds or removes a row.
-        if !movedToDisplay, savedY != nil, panel.frame.height > 0 {
-            frame.origin.y = panel.frame.maxY - size.height
-        }
-        frame = OverlayGeometry.clamped(frame, to: screen.visibleFrame)
         if !content.isDragging {
+            let size = content.desiredSize
+            let origin: CGPoint
+            if let x = store.preferences.originX, let y = store.preferences.originY {
+                origin = CGPoint(x: x, y: y)
+            } else {
+                origin = CGPoint(x: screen.visibleFrame.maxX - size.width - 32,
+                                 y: screen.visibleFrame.maxY - size.height - 40)
+            }
+            var placement = store.preferences.placement
+                ?? OverlayPlacement(frame: CGRect(origin: origin, size: size), on: screen.visibleFrame)
+            // Keep the last visible size and anchor while no processes match,
+            // including the empty sample before the app finishes launching.
+            placement.resize(to: store.tracked.isEmpty ? placement.frame.size : size, on: screen.visibleFrame)
             adjustingFrame = true
-            if panel.frame != frame { panel.setFrame(frame, display: true) }
+            if panel.frame != placement.frame { panel.setFrame(placement.frame, display: true) }
             adjustingFrame = false
-            lastDisplayID = screen.displayID
+            if !store.tracked.isEmpty { store.rememberPlacement(placement, displayID: screen.displayID) }
         }
         panel.ignoresMouseEvents = store.preferences.locked
         let level: NSWindow.Level = store.preferences.alwaysInFront ? .floating : .normal
@@ -138,8 +134,8 @@ final class OverlayController: NSObject, NSWindowDelegate {
     }
 
     func windowDidMove(_ notification: Notification) {
-        guard !adjustingFrame else { return }
-        store.rememberPosition(panel.frame.origin, displayID: panel.screen?.displayID)
+        guard !adjustingFrame, let screen = panel.screen else { return }
+        store.rememberPlacement(OverlayPlacement(frame: panel.frame, on: screen.visibleFrame), displayID: screen.displayID)
     }
 }
 

@@ -19,6 +19,8 @@ Click an overlay column heading to sort by it; click again to reverse the order.
 
 The overlay’s Process column automatically fits the widest tracked name, with room for its heading and sort arrow. It grows or shrinks as matching processes change and follows the selected text size.
 
+Resizing keeps the nearest screen edges fixed: near the right edge it grows left, near the left edge it grows right, near the bottom it grows upward, and near the top it grows downward. Dragging the overlay chooses new anchor edges. The placement is saved across restarts and stays within the selected monitor.
+
 Click a process row to highlight it. Only one row is highlighted at a time, and the highlight follows that process as sorting changes. Clicking a row never modifies the regex filter.
 
 Right-click anywhere on the overlay to edit the regex directly in its menu, then press **Apply** or Return. The menu also offers **Unlock Overlay** when click-through is enabled, plus the full process list, Hide Overlay, and **Quit Thumper**. Locked left-clicks pass through the process table; right-click remains available. Escape or clicking outside dismisses the menu without applying a draft. Invalid expressions leave the active filter unchanged.
