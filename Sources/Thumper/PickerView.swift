@@ -78,11 +78,11 @@ struct PickerView: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            Image(systemName: "waveform.path")
-                .font(.system(size: 23, weight: .medium))
-                .foregroundStyle(accent)
+            Image(nsImage: AppBranding.appIcon)
+                .resizable()
+                .interpolation(.high)
                 .frame(width: 42, height: 42)
-                .background(accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Thumper").font(.system(size: 19, weight: .semibold))
                 Text(showSettings ? "Make the overlay feel at home." : "One expression. Every matching process.")

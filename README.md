@@ -1,10 +1,12 @@
 # Thumper
 
+<img src="Resources/Artwork/ThumperIcon.png" width="128" height="128" alt="Thumper: a machined metal thumper standing in concentric sand ripples">
+
 A native macOS menu-bar utility for watching processes in a movable desktop overlay. Track every matching process with a regular expression, such as `WindowServer|mentat|codex`.
 
 ## Run
 
-Open **build/Thumper.app**, then click the waveform icon in your menu bar.
+Open **build/Thumper.app**, then click the thumper icon in your menu bar.
 
 The picker opens beside the overlay on the same monitor. Before an overlay exists, it opens in the center of that monitor. It is not attached to the menu-bar icon.
 
@@ -56,6 +58,8 @@ The GPU approach is also documented in [Stats’ per-process GPU implementation 
 ## Build and check
 
 Requires macOS 13+ and an Xcode toolchain that includes the macOS 26 SDK. There are no package dependencies.
+
+The Dune-inspired app artwork lives in `Resources/Artwork/ThumperIcon.png`; its built-in image-generation prompt is saved alongside it. `scripts/build-icons.sh` creates every standard and Retina icon size (16–1024 pixels), preserving transparency, and packages the `.icns` used by Finder and the picker. The menu bar uses a separate 18-point vector template that follows light and dark appearances.
 
 ```sh
 ./scripts/build.sh                 # Release app, signed locally

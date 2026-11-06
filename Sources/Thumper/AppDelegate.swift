@@ -22,9 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store = AppStore()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
-            let image = NSImage(systemSymbolName: "waveform.path", accessibilityDescription: "Thumper")
-            image?.isTemplate = true
-            button.image = image
+            button.image = AppBranding.menuBarIcon
             button.toolTip = "Thumper — open controls beside the overlay"
             button.target = self
             button.action = #selector(togglePicker)

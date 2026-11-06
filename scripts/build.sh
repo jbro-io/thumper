@@ -4,10 +4,12 @@ cd "$(dirname "$0")/.."
 export CLANG_MODULE_CACHE_PATH="$PWD/.build/ModuleCache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$PWD/.build/ModuleCache"
 swift build --disable-sandbox --cache-path "$PWD/.build/cache" -c release
+./scripts/build-icons.sh
 app="$PWD/build/Thumper.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp .build/release/Thumper "$app/Contents/MacOS/Thumper"
 cp Resources/Info.plist "$app/Contents/Info.plist"
+cp build/Thumper.icns "$app/Contents/Resources/Thumper.icns"
 /usr/bin/codesign --force --sign - "$app"
 /usr/bin/codesign --verify --strict "$app"
 printf 'Built %s\n' "$app"
