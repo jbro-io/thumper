@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import ThumperCore
+import ThumperRendering
 
 private final class GlassPanel: NSPanel {
     override var canBecomeKey: Bool { false }
@@ -167,13 +168,13 @@ private final class OverlayCanvas: NSView {
     private var processColumnWidth: CGFloat {
         let font = NSFont.systemFont(ofSize: fontSize, weight: .medium)
         var width = store.tracked.reduce(CGFloat.zero) { width, process in
-            max(width, (process.name as NSString).size(withAttributes: [.font: font]).width)
+            max(width, OverlayTextRenderer.width(process.name, font: font))
         }
         if store.preferences.showHeaders {
             let headingFont = NSFont.systemFont(ofSize: fontSize * 0.76, weight: .semibold)
             // Reserve either sort arrow so changing sort order does not resize the column.
             for heading in ["PROCESS ▴", "PROCESS ▾"] {
-                width = max(width, (heading as NSString).size(withAttributes: [.font: headingFont]).width)
+                width = max(width, OverlayTextRenderer.width(heading, font: headingFont))
             }
         }
         // Match the gap removed from the text rectangle when drawing a cell.
@@ -257,18 +258,12 @@ private final class OverlayCanvas: NSView {
 
     private func text(_ value: String, in rect: CGRect, size: CGFloat, weight: NSFont.Weight,
                       right: Bool, alpha: CGFloat) {
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = right ? .right : .left
-        paragraph.lineBreakMode = .byTruncatingTail
-        let shadow = NSShadow()
-        shadow.shadowColor = (store.preferences.ink == "Dark" ? NSColor.white : NSColor.black).withAlphaComponent(0.85)
-        shadow.shadowBlurRadius = 2
-        shadow.shadowOffset = CGSize(width: 0, height: -1)
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: right ? NSFont.monospacedSystemFont(ofSize: size, weight: weight) : NSFont.systemFont(ofSize: size, weight: weight),
-            .foregroundColor: ink.withAlphaComponent(alpha * store.preferences.opacity), .paragraphStyle: paragraph, .shadow: shadow
-        ]
-        (value as NSString).draw(in: rect, withAttributes: attributes)
+        guard let context = NSGraphicsContext.current?.cgContext else { return }
+        let font = right ? NSFont.monospacedSystemFont(ofSize: size, weight: weight) : NSFont.systemFont(ofSize: size, weight: weight)
+        let shadow = (store.preferences.ink == "Dark" ? NSColor.white : NSColor.black).withAlphaComponent(0.85)
+        OverlayTextRenderer.draw(value, in: rect, font: font,
+                                 color: ink.withAlphaComponent(alpha * store.preferences.opacity).cgColor,
+                                 shadowColor: shadow.cgColor, rightAligned: right, context: context)
     }
 
     override func resetCursorRects() {

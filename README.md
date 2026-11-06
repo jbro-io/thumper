@@ -61,10 +61,12 @@ Requires macOS 13+ and an Xcode toolchain that includes the macOS 26 SDK. There 
 ./scripts/build.sh                 # Release app, signed locally
 ./scripts/release.sh               # Release app plus ZIP and SHA-256 checksum
 ./scripts/run.sh                   # Build and open
-swift test --disable-sandbox       # Counter, GPU lifecycle, regex, parser, geometry tests
+swift test --disable-sandbox       # Metrics, matching, geometry, and overlay rendering tests
 build/Thumper.app/Contents/MacOS/Thumper --diagnose
 ```
 
 Diagnostics sample live processes, verify CPU against POSIX resource timing, read Mach ports and protected-process counters, and report live per-process GPU readings. Run outside a restricted automation sandbox so macOS permits reading other processes. The app is signed for local use; distributing it to other Macs would additionally require a Developer ID signature and notarization.
 
-Open `Package.swift` in Xcode to work on the project. `Sources/Thumper` contains the native interface and overlay, `Sources/ThumperCore` contains sampling and matching, and `Sources/CProcessMetrics` provides the small Darwin process bridge.
+Overlay rendering tests exercise alignment, truncation, Unicode font fallback, graphics-state isolation, and 56,000 repeated cell redraws across every text size. The overlay uses Core Text with immutable font attributes and draws its shadow directly in Core Graphics, avoiding the AppKit attributed-text conversion involved in the macOS 26 crash reports.
+
+Open `Package.swift` in Xcode to work on the project. `Sources/Thumper` contains the native interface and overlay, `Sources/ThumperCore` contains sampling and matching, `Sources/ThumperRendering` contains the testable text renderer, and `Sources/CProcessMetrics` provides the small Darwin process bridge.

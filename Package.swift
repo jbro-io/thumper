@@ -8,7 +8,9 @@ let package = Package(
     targets: [
         .target(name: "CProcessMetrics", publicHeadersPath: "include"),
         .target(name: "ThumperCore", dependencies: ["CProcessMetrics"]),
-        .executableTarget(name: "Thumper", dependencies: ["ThumperCore"]),
-        .testTarget(name: "ThumperCoreTests", dependencies: ["ThumperCore"])
+        .target(name: "ThumperRendering"),
+        .executableTarget(name: "Thumper", dependencies: ["ThumperCore", "ThumperRendering"]),
+        .testTarget(name: "ThumperCoreTests", dependencies: ["ThumperCore"]),
+        .testTarget(name: "ThumperRenderingTests", dependencies: ["ThumperRendering"])
     ]
 )
