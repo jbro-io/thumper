@@ -17,6 +17,8 @@ The picker uses native Liquid Glass on macOS 26. The overlay has a faint backgro
 
 Click an overlay column heading to sort by it; click again to reverse the order. CPU/GPU/Threads/Ports start with the largest value first. The active heading shows an arrow. Sorting is live and saved between launches. When click-through is locked, use **Settings → Overlay sort** instead.
 
+The overlay’s Process column automatically fits the widest tracked name, with room for its heading and sort arrow. It grows or shrinks as matching processes change and follows the selected text size.
+
 Click a process row to highlight it. Only one row is highlighted at a time, and the highlight follows that process as sorting changes. Clicking a row never modifies the regex filter.
 
 Right-click anywhere on the overlay to edit the regex directly in its menu, then press **Apply** or Return. The menu also offers **Unlock Overlay** when click-through is enabled, plus the full process list, Hide Overlay, and **Quit Thumper**. Locked left-clicks pass through the process table; right-click remains available. Escape or clicking outside dismisses the menu without applying a draft. Invalid expressions leave the active filter unchanged.

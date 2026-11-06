@@ -168,9 +168,25 @@ private final class OverlayCanvas: NSView {
 
     private var fontSize: CGFloat { store.preferences.fontSize }
     private var rowHeight: CGFloat { fontSize * 1.9 }
+    private var processColumnWidth: CGFloat {
+        let font = NSFont.systemFont(ofSize: fontSize, weight: .medium)
+        var width = store.tracked.reduce(CGFloat.zero) { width, process in
+            max(width, (process.name as NSString).size(withAttributes: [.font: font]).width)
+        }
+        if store.preferences.showHeaders {
+            let headingFont = NSFont.systemFont(ofSize: fontSize * 0.76, weight: .semibold)
+            // Reserve either sort arrow so changing sort order does not resize the column.
+            for heading in ["PROCESS ▴", "PROCESS ▾"] {
+                width = max(width, (heading as NSString).size(withAttributes: [.font: headingFont]).width)
+            }
+        }
+        // Match the gap removed from the text rectangle when drawing a cell.
+        return ceil(width) + 12
+    }
+
     private var columns: [(String, CGFloat, ProcessSortField)] {
         let factor = fontSize / 13
-        var result: [(String, CGFloat, ProcessSortField)] = [("PROCESS", 188 * factor, .name), ("CPU %", 66 * factor, .cpu)]
+        var result: [(String, CGFloat, ProcessSortField)] = [("PROCESS", processColumnWidth, .name), ("CPU %", 66 * factor, .cpu)]
         if store.preferences.showGPU { result.append(("GPU %", 66 * factor, .gpu)) }
         if store.preferences.showThreads { result.append(("THREADS", 72 * factor, .threads)) }
         if store.preferences.showPorts { result.append(("PORTS", 64 * factor, .ports)) }
@@ -193,6 +209,8 @@ private final class OverlayCanvas: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
+        let columns = self.columns
+        let desiredSize = self.desiredSize
         NSGraphicsContext.current?.cgContext.clear(bounds)
         if store.preferences.backgroundStyle == "Subtle" {
             let background: NSColor = store.preferences.ink == "Dark" ? .white : .black
