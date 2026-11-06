@@ -15,7 +15,7 @@ The picker opens beside the overlay on the same monitor. Before an overlay exist
 
 The picker uses native Liquid Glass on macOS 26. The overlay has a faint background (18% opacity by default) for readability, with no border or title bar. **Settings → Overlay background** offers Subtle with adjustable opacity, Text only for full transparency, or Liquid Glass. Earlier macOS versions use the system material fallback.
 
-Click an overlay column heading to sort by it; click again to reverse the order. CPU/GPU/Threads/Ports start with the largest value first. The active heading shows an arrow. Sorting is live and saved between launches. When click-through is locked, use **Settings → Overlay sort** instead.
+Click an overlay column heading to sort by it; click again to reverse the order. CPU/GPU/Memory/Threads/Ports start with the largest value first. The active heading shows an arrow. Sorting is live and saved between launches. When click-through is locked, use **Settings → Overlay sort** instead.
 
 The overlay’s Process column automatically fits the widest tracked name, with room for its heading and sort arrow. It grows or shrinks as matching processes change and follows the selected text size.
 
@@ -44,11 +44,12 @@ The filter is saved across app and Mac restarts. Exited processes disappear; mat
 
 - **CPU %** uses sampled CPU time. 100% is one fully occupied core; multithreaded processes can exceed 100%. Mach clock ticks are converted with the machine’s timebase, including on Apple silicon.
 - **GPU %** uses GPU-driver `AppUsage` / `accumulatedGPUTime` counters from IORegistry. Deltas are calculated per GPU client, then combined per process. New clients, changed queue counts, counter resets, and reused PIDs establish fresh baselines. No root helper is needed. These driver properties are not a stable Apple API, so availability can vary by macOS version and driver. A dash means no reliable counter/baseline; a measured zero means idle.
+- **Memory** appears immediately after GPU % in the overlay and process picker. It reports the process’s physical memory footprint, matching the meaning of Activity Monitor’s Memory column, with decimal KB/MB/GB units. Sorting compares the byte counts. It is visible by default and can be hidden under **Settings → Visible Metrics**. Missing readings display a dash.
 - **Threads** is the process thread count.
 - **Ports** is the Mach-port count, matching the meaning in Activity Monitor. These are not TCP/UDP port numbers.
 - **PID** is the current process ID. PID plus start time prevents attaching old readings to a recycled PID.
 
-CPU, GPU, and normal thread counters refresh at the selected interval (0.5–5 seconds). Mach ports and protected-process CPU/thread counters use Apple’s signed `/usr/bin/top` observer about every 5 seconds. Its first CPU sample is discarded. Everything stays on the Mac; the app has no network service or telemetry.
+CPU, GPU, memory, and normal thread counters refresh at the selected interval (0.5–5 seconds). Memory uses the native `proc_pid_rusage` physical-footprint counter. Mach ports and protected-process CPU/thread/memory fallbacks use Apple’s signed `/usr/bin/top` observer about every 5 seconds. Its first CPU sample is discarded. Everything stays on the Mac; the app has no network service or telemetry.
 
 The GPU approach is also documented in [Stats’ per-process GPU implementation discussion](https://github.com/exelban/stats/issues/3710). The glass material uses Apple’s [NSGlassEffectView](https://developer.apple.com/documentation/appkit/nsglasseffectview).
 

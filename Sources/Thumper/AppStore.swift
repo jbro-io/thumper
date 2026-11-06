@@ -21,6 +21,7 @@ struct OverlayPreferences: Codable, Equatable {
     var placement: OverlayPlacement?
     var showHeaders = true
     var showGPU = true
+    var showMemory = true
     var showThreads = true
     var showPorts = true
     var showPID = true
@@ -29,7 +30,7 @@ struct OverlayPreferences: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case visible, locked, alwaysInFront, glassBackground, fontSize, opacity, ink, interval
-        case displayID, originX, originY, placement, showHeaders, showGPU, showThreads, showPorts, showPID
+        case displayID, originX, originY, placement, showHeaders, showGPU, showMemory, showThreads, showPorts, showPID
         case backgroundStyle, backgroundOpacity, overlaySortField, overlaySortAscending
     }
 
@@ -53,6 +54,7 @@ struct OverlayPreferences: Codable, Equatable {
         placement = try values.decodeIfPresent(OverlayPlacement.self, forKey: .placement)
         showHeaders = try values.decodeIfPresent(Bool.self, forKey: .showHeaders) ?? true
         showGPU = try values.decodeIfPresent(Bool.self, forKey: .showGPU) ?? true
+        showMemory = try values.decodeIfPresent(Bool.self, forKey: .showMemory) ?? true
         showThreads = try values.decodeIfPresent(Bool.self, forKey: .showThreads) ?? true
         showPorts = try values.decodeIfPresent(Bool.self, forKey: .showPorts) ?? true
         showPID = try values.decodeIfPresent(Bool.self, forKey: .showPID) ?? true
@@ -133,7 +135,8 @@ final class AppStore: ObservableObject {
         let rows = tracked.map { OverlayRow(tracked: $0, process: byIdentity[$0.id], ports: ports[$0.id], samplingFailed: sampleError != nil || updatedAt == nil) }
         func values(_ row: OverlayRow) -> ProcessSortValues {
             ProcessSortValues(id: row.id, name: row.name, cpu: row.process?.cpuPercent,
-                              gpu: row.process?.gpuPercent, threads: row.process?.threads, ports: row.ports)
+                              gpu: row.process?.gpuPercent, threads: row.process?.threads, ports: row.ports,
+                              memoryBytes: row.process?.memoryBytes)
         }
         return rows.sorted { ProcessOrdering.precedes(values($0), values($1), by: preferences.overlaySortField, ascending: preferences.overlaySortAscending) }
     }
@@ -183,9 +186,11 @@ final class AppStore: ObservableObject {
                     supplementalReadings = [:]
                 }
                 processes = snapshot.processes.map { record in
-                    guard record.threads == nil, let extra = self.supplementalReadings[record.id] else { return record }
+                    guard let extra = self.supplementalReadings[record.id] else { return record }
                     return ProcessRecord(id: record.id, name: record.name, executable: record.executable, uid: record.uid,
-                                         cpuPercent: extra.cpuPercent, gpuPercent: record.gpuPercent, threads: extra.threads, residentBytes: record.residentBytes)
+                                         cpuPercent: record.threads == nil ? extra.cpuPercent : record.cpuPercent,
+                                         gpuPercent: record.gpuPercent, threads: record.threads ?? extra.threads,
+                                         residentBytes: record.residentBytes, memoryBytes: record.memoryBytes ?? extra.memoryBytes)
                 }
                 byIdentity = Dictionary(uniqueKeysWithValues: processes.map { ($0.id, $0) })
                 sampleError = snapshot.error

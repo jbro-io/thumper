@@ -54,7 +54,8 @@ public actor ProcessSampler {
             records.append(ProcessRecord(id: id, name: name.isEmpty ? "Process \(raw.pid)" : name,
                                          executable: executable, uid: raw.uid, cpuPercent: cpu, gpuPercent: gpu,
                                          threads: raw.has_cpu ? Int(raw.threads) : nil,
-                                         residentBytes: raw.has_cpu ? raw.resident_bytes : nil))
+                                         residentBytes: raw.has_cpu ? raw.resident_bytes : nil,
+                                         memoryBytes: raw.has_memory ? raw.footprint_bytes : nil))
         }
         previous = next
         let identities = Dictionary(records.map { ($0.id.pid, $0.id) }, uniquingKeysWith: { first, _ in first })
@@ -63,7 +64,7 @@ public actor ProcessSampler {
         records = records.map { record in
             ProcessRecord(id: record.id, name: record.name, executable: record.executable, uid: record.uid,
                           cpuPercent: record.cpuPercent, gpuPercent: gpuRates[record.id] ?? record.gpuPercent,
-                          threads: record.threads, residentBytes: record.residentBytes)
+                          threads: record.threads, residentBytes: record.residentBytes, memoryBytes: record.memoryBytes)
         }
         return ProcessSnapshot(processes: records, date: Date(), error: nil, gpuTelemetryAvailable: registry.available)
     }

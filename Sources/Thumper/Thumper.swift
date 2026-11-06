@@ -37,6 +37,8 @@ struct Thumper {
         let ports = PortSampler()
         let portSnapshot = await ports.sample(identities: second.processes.map(\.id))
         ports.stop()
+        func memory(_ record: ProcessRecord) -> UInt64? { record.memoryBytes ?? portSnapshot.readings[record.id]?.memoryBytes }
+        let memoryCount = second.processes.filter { memory($0) != nil }.count
         let result: [String: Any] = [
             "processCount": second.processes.count,
             "firstSampleCount": first.processes.count,
@@ -45,6 +47,11 @@ struct Thumper {
             "referenceCPUPercent": expectedCPU,
             "cpuClockVerified": cpuVerified,
             "selfThreads": me?.threads as Any? ?? NSNull(),
+            "selfMemoryBytes": me?.memoryBytes as Any? ?? NSNull(),
+            "selfMemoryFromTop": me.flatMap { portSnapshot.readings[$0.id]?.memoryBytes } as Any? ?? NSNull(),
+            "nativeMemoryReadingCount": second.processes.filter { $0.memoryBytes != nil }.count,
+            "memoryReadingCount": memoryCount,
+            "systemMemoryReadingCount": second.processes.filter { $0.uid == 0 && memory($0) != nil }.count,
             "portReadingCount": portSnapshot.counts.count,
             "selfPorts": me.flatMap { portSnapshot.counts[$0.id] } as Any? ?? NSNull(),
             "systemProcessCount": second.processes.filter { $0.uid == 0 }.count,
@@ -57,6 +64,6 @@ struct Thumper {
         ]
         if let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]),
            let text = String(data: data, encoding: .utf8) { print(text) }
-        if second.processes.isEmpty || !cpuVerified || portSnapshot.counts.isEmpty { exit(1) }
+        if second.processes.isEmpty || !cpuVerified || portSnapshot.counts.isEmpty || memoryCount == 0 || (me?.memoryBytes ?? 0) == 0 { exit(1) }
     }
 }

@@ -1,7 +1,7 @@
 import Foundation
 
 public enum ProcessSortField: String, Codable, CaseIterable, Sendable {
-    case name, cpu, gpu, threads, ports, pid
+    case name, cpu, gpu, memory, threads, ports, pid
 }
 
 public struct ProcessSortValues {
@@ -11,9 +11,11 @@ public struct ProcessSortValues {
     public let gpu: Double?
     public let threads: Int?
     public let ports: Int?
+    public let memoryBytes: UInt64?
 
-    public init(id: ProcessIdentity, name: String, cpu: Double?, gpu: Double?, threads: Int?, ports: Int?) {
+    public init(id: ProcessIdentity, name: String, cpu: Double?, gpu: Double?, threads: Int?, ports: Int?, memoryBytes: UInt64? = nil) {
         self.id = id; self.name = name; self.cpu = cpu; self.gpu = gpu; self.threads = threads; self.ports = ports
+        self.memoryBytes = memoryBytes
     }
 
     fileprivate func value(for field: ProcessSortField) -> Double? {
@@ -21,6 +23,7 @@ public struct ProcessSortValues {
         case .name: return nil
         case .cpu: return cpu
         case .gpu: return gpu
+        case .memory: return memoryBytes.map(Double.init)
         case .threads: return threads.map(Double.init)
         case .ports: return ports.map(Double.init)
         case .pid: return Double(id.pid)

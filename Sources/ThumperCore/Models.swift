@@ -20,9 +20,10 @@ public struct ProcessRecord: Identifiable, Sendable {
     public let gpuPercent: Double?
     public let threads: Int?
     public let residentBytes: UInt64?
+    public let memoryBytes: UInt64?
 
     public init(id: ProcessIdentity, name: String, executable: String, uid: UInt32,
-                cpuPercent: Double?, gpuPercent: Double?, threads: Int?, residentBytes: UInt64?) {
+                cpuPercent: Double?, gpuPercent: Double?, threads: Int?, residentBytes: UInt64?, memoryBytes: UInt64? = nil) {
         self.id = id
         self.name = name
         self.executable = executable
@@ -31,6 +32,7 @@ public struct ProcessRecord: Identifiable, Sendable {
         self.gpuPercent = gpuPercent
         self.threads = threads
         self.residentBytes = residentBytes
+        self.memoryBytes = memoryBytes
     }
 }
 
@@ -54,6 +56,16 @@ public enum MetricFormat {
 
     public static func count(_ value: Int?) -> String {
         value.map(String.init) ?? "—"
+    }
+
+    public static func memory(_ bytes: UInt64?) -> String {
+        guard let bytes else { return "—" }
+        guard bytes >= 1000 else { return "\(bytes) B" }
+        let units = ["KB", "MB", "GB", "TB", "PB", "EB"]
+        var value = Double(bytes) / 1000
+        var unit = 0
+        while value >= 1000 && unit < units.count - 1 { value /= 1000; unit += 1 }
+        return String(format: "%.1f %@", locale: Locale(identifier: "en_US_POSIX"), value, units[unit])
     }
 }
 

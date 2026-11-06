@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/sysctl.h>
 #include <sys/proc.h>
+#include <sys/resource.h>
 #include <time.h>
 
 static uint64_t start_time(const struct proc_bsdinfo *info) {
@@ -98,6 +99,11 @@ int pg_copy_processes(PGProcessSample **out) {
             sample->cpu_time_ns = (uint64_t)(ticks * timebase.numer / timebase.denom);
             sample->resident_bytes = task.pti_resident_size;
             sample->threads = task.pti_threadnum;
+        }
+        struct rusage_info_v2 usage = {0};
+        if (proc_pid_rusage(pid, RUSAGE_INFO_V2, (rusage_info_t *)&usage) == 0) {
+            sample->has_memory = true;
+            sample->footprint_bytes = usage.ri_phys_footprint;
         }
 #if defined(__x86_64__)
         task_name_t task_port = MACH_PORT_NULL;

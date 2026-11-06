@@ -3,7 +3,7 @@ import ThumperCore
 import SwiftUI
 
 private enum ProcessFilter: String, CaseIterable { case all = "All processes", mine = "My processes", tracked = "Matches" }
-private enum ProcessSort: String { case name = "Process", cpu = "CPU %", gpu = "GPU %", threads = "Threads", ports = "Ports", pid = "PID" }
+private enum ProcessSort: String { case name = "Process", cpu = "CPU %", gpu = "GPU %", memory = "Memory", threads = "Threads", ports = "Ports", pid = "PID" }
 
 struct PickerView: View {
     @ObservedObject var store: AppStore
@@ -27,11 +27,16 @@ struct PickerView: View {
                 || String(process.id.pid).contains(query) || process.executable.localizedCaseInsensitiveContains(query))
         }
         return filtered.sorted { left, right in
+            if sort == .memory {
+                if left.memoryBytes == nil && right.memoryBytes != nil { return false }
+                if left.memoryBytes != nil && right.memoryBytes == nil { return true }
+            }
             let order: ComparisonResult
             switch sort {
             case .name: order = left.name.localizedStandardCompare(right.name)
             case .cpu: order = compare(left.cpuPercent, right.cpuPercent)
             case .gpu: order = compare(left.gpuPercent, right.gpuPercent)
+            case .memory: order = compare(left.memoryBytes.map(Double.init), right.memoryBytes.map(Double.init))
             case .threads: order = compare(left.threads.map(Double.init), right.threads.map(Double.init))
             case .ports: order = compare(store.ports[left.id].map(Double.init), store.ports[right.id].map(Double.init))
             case .pid: order = compare(Double(left.id.pid), Double(right.id.pid))
@@ -137,6 +142,7 @@ struct PickerView: View {
                 sortHeading(.name).frame(maxWidth: .infinity, alignment: .leading)
                 sortHeading(.cpu).frame(width: 70, alignment: .trailing)
                 sortHeading(.gpu).frame(width: 70, alignment: .trailing)
+                sortHeading(.memory).frame(width: 90, alignment: .trailing).help("Physical memory footprint")
                 sortHeading(.threads).frame(width: 66, alignment: .trailing)
                 sortHeading(.ports).frame(width: 66, alignment: .trailing)
                 sortHeading(.pid).frame(width: 72, alignment: .trailing)
@@ -179,6 +185,7 @@ struct PickerView: View {
                     .lineLimit(1).truncationMode(.middle).frame(maxWidth: .infinity, alignment: .leading)
                 cell(MetricFormat.percent(process.cpuPercent), width: 70, highlighted: (process.cpuPercent ?? 0) >= 50)
                 cell(MetricFormat.percent(process.gpuPercent), width: 70)
+                cell(MetricFormat.memory(process.memoryBytes), width: 90)
                 cell(MetricFormat.count(process.threads), width: 66)
                 cell(MetricFormat.count(store.ports[process.id]), width: 66)
                 cell(String(process.id.pid), width: 72, muted: true)
@@ -197,7 +204,7 @@ struct PickerView: View {
         .accessibilityElement(children: .combine)
         .accessibilityAction { store.highlightedProcess = process.id }
         .accessibilityValue(store.highlightedProcess == process.id ? "Highlighted" : "")
-        .accessibilityLabel("\(process.name), PID \(process.id.pid), CPU \(MetricFormat.percent(process.cpuPercent)), GPU \(MetricFormat.percent(process.gpuPercent)), \(selected ? "tracked" : "not matched")")
+        .accessibilityLabel("\(process.name), PID \(process.id.pid), CPU \(MetricFormat.percent(process.cpuPercent)), GPU \(MetricFormat.percent(process.gpuPercent)), Memory \(MetricFormat.memory(process.memoryBytes)), \(selected ? "tracked" : "not matched")")
     }
 
     private func cell(_ text: String, width: CGFloat, highlighted: Bool = false, muted: Bool = false) -> some View {
@@ -304,6 +311,7 @@ struct PickerView: View {
                     HStack(spacing: 22) {
                         Text("CPU %").foregroundStyle(.secondary)
                         Toggle("GPU %", isOn: $store.preferences.showGPU)
+                        Toggle("Memory", isOn: $store.preferences.showMemory)
                         Toggle("Threads", isOn: $store.preferences.showThreads)
                         Toggle("Ports", isOn: $store.preferences.showPorts)
                         Toggle("PID", isOn: $store.preferences.showPID)
@@ -329,6 +337,7 @@ struct PickerView: View {
                             Text("Process").tag(ProcessSortField.name)
                             Text("CPU %").tag(ProcessSortField.cpu)
                             Text("GPU %").tag(ProcessSortField.gpu)
+                            Text("Memory").tag(ProcessSortField.memory)
                             Text("Threads").tag(ProcessSortField.threads)
                             Text("Ports").tag(ProcessSortField.ports)
                             Text("PID").tag(ProcessSortField.pid)

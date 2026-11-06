@@ -4,6 +4,7 @@ public struct SupplementalMetrics: Sendable {
     public let cpuPercent: Double?
     public let threads: Int?
     public let ports: Int?
+    public let memoryBytes: UInt64?
 }
 
 public enum TopMetricsParser {
@@ -13,17 +14,29 @@ public enum TopMetricsParser {
         for line in text.split(whereSeparator: \.isNewline) {
             let parts = line.split(whereSeparator: \.isWhitespace)
             if parts.first == "PID" {
-                inTable = parts.count == 4 && parts[1] == "%CPU" && parts[2] == "#TH" && parts[3] == "#PORTS"
+                inTable = parts.count == 5 && parts[1] == "%CPU" && parts[2] == "#TH" && parts[3] == "#PORTS" && parts[4] == "MEM"
                 continue
             }
-            guard inTable, parts.count == 4, let pid = Int32(parts[0]) else { continue }
+            guard inTable, parts.count == 5, let pid = Int32(parts[0]) else { continue }
             let cpu = Double(parts[1]).flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }
             let threads = parts[2].split(separator: "/").first.flatMap { Int($0.trimmingCharacters(in: CharacterSet(charactersIn: "+-"))) }
             let ports = Int(parts[3].trimmingCharacters(in: CharacterSet(charactersIn: "+-")))
             // A later table replaces the warm-up sample from top -l 2.
-            result[pid] = SupplementalMetrics(cpuPercent: cpu, threads: threads, ports: ports)
+            result[pid] = SupplementalMetrics(cpuPercent: cpu, threads: threads, ports: ports, memoryBytes: memoryBytes(parts[4]))
         }
         return result
+    }
+
+    private static func memoryBytes(_ text: Substring) -> UInt64? {
+        var value = text
+        while value.last == "+" || value.last == "-" { value = value.dropLast() }
+        guard let suffix = value.last else { return nil }
+        // top's K/M/G units are binary; the UI formats the resulting byte count.
+        let units: [Character: Double] = ["B": 1, "K": 1024, "M": 1_048_576, "G": 1_073_741_824, "T": 1_099_511_627_776]
+        guard let scale = units[suffix], let number = Double(value.dropLast()), number >= 0 else { return nil }
+        let bytes = (number * scale).rounded()
+        guard bytes.isFinite, bytes < Double(UInt64.max) else { return nil }
+        return UInt64(bytes)
     }
 }
 
@@ -65,7 +78,7 @@ public final class PortSampler: @unchecked Sendable {
     private func collect(identities: [ProcessIdentity]) -> PortSnapshot {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/top")
-        process.arguments = ["-l", "2", "-s", "1", "-stats", "pid,cpu,threads,ports", "-F", "-R", "-ncols", "128"]
+        process.arguments = ["-l", "2", "-s", "1", "-stats", "pid,cpu,threads,ports,mem", "-F", "-R", "-ncols", "128"]
         var environment = ProcessInfo.processInfo.environment
         environment["LC_ALL"] = "C"
         process.environment = environment

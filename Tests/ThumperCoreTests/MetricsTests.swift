@@ -135,19 +135,58 @@ final class MetricsTests: XCTestCase {
 
     func testProtectedProcessMetricsUseSecondTopSample() {
         let output = """
-        PID %CPU #TH #PORTS
-        1 0.0 8/1 39
+        PID %CPU #TH #PORTS MEM
+        1 0.0 8/1 39 128M
         Processes: 2 total
-        PID %CPU #TH #PORTS
-        1 12.5 9/2 40+
-        2 150.1 5 20-
+        PID %CPU #TH #PORTS MEM
+        1 12.5 9/2 40+ 256M+
+        2 150.1 5 20- 512K-
         """
         let parsed = TopMetricsParser.parse(output)
         XCTAssertEqual(parsed[1]?.cpuPercent, 12.5)
         XCTAssertEqual(parsed[1]?.threads, 9)
         XCTAssertEqual(parsed[1]?.ports, 40)
+        XCTAssertEqual(parsed[1]?.memoryBytes, 256 * 1_048_576)
         XCTAssertEqual(parsed[2]?.cpuPercent, 150.1)
-        XCTAssertTrue(TopMetricsParser.parse("123 4.0 10 20").isEmpty)
+        XCTAssertTrue(TopMetricsParser.parse("123 4.0 10 20 128M").isEmpty)
+    }
+
+    func testMemoryFormattingUsesReadableDecimalUnitsAndPreservesMissingValues() {
+        XCTAssertEqual(MetricFormat.memory(nil), "—")
+        XCTAssertEqual(MetricFormat.memory(0), "0 B")
+        XCTAssertEqual(MetricFormat.memory(999), "999 B")
+        XCTAssertEqual(MetricFormat.memory(1000), "1.0 KB")
+        XCTAssertEqual(MetricFormat.memory(1_500_000), "1.5 MB")
+        XCTAssertEqual(MetricFormat.memory(1_500_000_000), "1.5 GB")
+        XCTAssertEqual(MetricFormat.memory(UInt64.max), "18.4 EB")
+    }
+
+    func testMemorySortingComparesBytesAcrossUnitsAndKeepsMissingValuesLast() {
+        func value(_ pid: Int32, _ memory: UInt64?) -> ProcessSortValues {
+            ProcessSortValues(id: ProcessIdentity(pid: pid, startedAtMicroseconds: 1), name: "codex",
+                              cpu: nil, gpu: nil, threads: nil, ports: nil, memoryBytes: memory)
+        }
+        let values = [value(1, 900_000_000), value(2, 1_200_000_000), value(3, 12_000_000), value(4, nil), value(5, 0)]
+        XCTAssertEqual(values.sorted { ProcessOrdering.precedes($0, $1, by: .memory, ascending: false) }.map(\.id.pid), [2, 1, 3, 5, 4])
+        XCTAssertEqual(values.sorted { ProcessOrdering.precedes($0, $1, by: .memory, ascending: true) }.map(\.id.pid), [5, 3, 1, 2, 4])
+    }
+
+    func testTopMemoryUnitsAndUnavailableReadings() {
+        let parsed = TopMetricsParser.parse("""
+        PID %CPU #TH #PORTS MEM
+        1 0.0 1 1 1536K+
+        2 0.0 1 1 1.5G-
+        3 0.0 1 1 0B
+        4 0.0 1 1 N/A
+        5 0.0 1 1 -1M
+        6 0.0 1 1 9e99T
+        """)
+        XCTAssertEqual(parsed[1]?.memoryBytes, 1_572_864)
+        XCTAssertEqual(parsed[2]?.memoryBytes, 1_610_612_736)
+        XCTAssertEqual(parsed[3]?.memoryBytes, 0)
+        XCTAssertNil(parsed[4]?.memoryBytes)
+        XCTAssertNil(parsed[5]?.memoryBytes)
+        XCTAssertNil(parsed[6]?.memoryBytes)
     }
 
     func testGPUCombinesStableClientsAndKeepsIdleZero() {

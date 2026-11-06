@@ -11,9 +11,11 @@ typedef struct {
     uint64_t cpu_time_ns;
     uint64_t gpu_time_ns;
     uint64_t resident_bytes;
+    uint64_t footprint_bytes;
     int32_t threads;
     bool has_cpu;
     bool has_gpu;
+    bool has_memory;
     char name[256];
     char executable[4096];
 } PGProcessSample;

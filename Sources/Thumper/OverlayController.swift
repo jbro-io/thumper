@@ -184,6 +184,7 @@ private final class OverlayCanvas: NSView {
         let factor = fontSize / 13
         var result: [(String, CGFloat, ProcessSortField)] = [("PROCESS", processColumnWidth, .name), ("CPU %", 66 * factor, .cpu)]
         if store.preferences.showGPU { result.append(("GPU %", 66 * factor, .gpu)) }
+        if store.preferences.showMemory { result.append(("MEMORY", 90 * factor, .memory)) }
         if store.preferences.showThreads { result.append(("THREADS", 72 * factor, .threads)) }
         if store.preferences.showPorts { result.append(("PORTS", 64 * factor, .ports)) }
         if store.preferences.showPID { result.append(("PID", 72 * factor, .pid)) }
@@ -236,6 +237,7 @@ private final class OverlayCanvas: NSView {
             }
             var values = [row.name, row.status ?? MetricFormat.percent(row.process?.cpuPercent)]
             if store.preferences.showGPU { values.append(MetricFormat.percent(row.process?.gpuPercent)) }
+            if store.preferences.showMemory { values.append(MetricFormat.memory(row.process?.memoryBytes)) }
             if store.preferences.showThreads { values.append(MetricFormat.count(row.process?.threads)) }
             if store.preferences.showPorts { values.append(MetricFormat.count(row.ports)) }
             if store.preferences.showPID { values.append(String(row.id.pid)) }
@@ -246,7 +248,7 @@ private final class OverlayCanvas: NSView {
                      right: index > 0, alpha: row.status == nil ? 1 : 0.55)
                 x += column.1
             }
-            accessibility.append("\(row.name), PID \(row.id.pid), CPU \(MetricFormat.percent(row.process?.cpuPercent)) percent, \(row.status ?? "running")")
+            accessibility.append("\(row.name), PID \(row.id.pid), CPU \(MetricFormat.percent(row.process?.cpuPercent)) percent, Memory \(MetricFormat.memory(row.process?.memoryBytes)), \(row.status ?? "running")")
             y += rowHeight
         }
         setAccessibilityLabel(accessibility.joined(separator: "; "))
